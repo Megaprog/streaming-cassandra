@@ -20,6 +20,9 @@ Or download the latest build at:
 
 ## How to use it?
 
+See server project at:
+    https://github.com/Megaprog/boot-ping-pong
+
 ```java
 
 ```
