@@ -1,5 +1,6 @@
 package org.jmmo.sc;
 
+import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Row;
@@ -183,7 +184,8 @@ public class EntityInfo<T> implements CMapper<T> {
                 continue;
             }
 
-            final Object value = row.isNull(definition.getName()) ? null : definition.getType().deserialize(row.getBytesUnsafe(definition.getName()), protocolVersion);
+            final Object value = row.isNull(definition.getName()) ? null : CodecRegistry.DEFAULT_INSTANCE.codecFor(definition.getType())
+                    .deserialize(row.getBytesUnsafe(definition.getName()), protocolVersion);
 
             try {
                 fieldMapper.getSetter().invoke(entity, inputConverters.stream().map(converter -> converter.convertIn(definition.getType(), value, fieldMapper.getFieldClass()))
