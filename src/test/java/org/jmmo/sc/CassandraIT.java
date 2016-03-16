@@ -14,10 +14,7 @@ import org.junit.runners.MethodSorters;
 
 import java.lang.annotation.RetentionPolicy;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Stream;
 
 import static org.hamcrest.Matchers.*;
@@ -152,7 +149,7 @@ public class CassandraIT {
     }
 
     @Test
-    public void test14_SelectNulls() {
+    public void test14_SelectNulls() throws Exception {
         UUID id = UUID.randomUUID();
         cassandra.execute(QueryBuilder.insertInto(entityInfo.table()).values(new String[]{"user_rank", "user_id"}, new Object[]{1, id}));
         Example other = cassandra.selectOne(Example.class, 1, id).get();
@@ -161,7 +158,7 @@ public class CassandraIT {
     }
 
     @Test
-    public void test15_InsertSomeFields() {
+    public void test15_InsertSomeFields() throws Exception {
         UUID id = UUID.randomUUID();
         cassandra.insert(new Example(1, id, "Mike", new byte[]{3, 2, 1}, 5, true, RetentionPolicy.CLASS), "\"user_Name\"", "data");
 
@@ -173,7 +170,7 @@ public class CassandraIT {
     }
 
     @Test
-    public void test16_Update() {
+    public void test16_Update() throws Exception {
         UUID id = UUID.randomUUID();
         final Example updatedEntity = new Example(1, id, "Jon", new byte[]{1, 2, 3}, 5, true, RetentionPolicy.CLASS);
         cassandra.update(updatedEntity);
@@ -182,7 +179,7 @@ public class CassandraIT {
     }
 
     @Test
-    public void test17_UpdateSomeFields() {
+    public void test17_UpdateSomeFields() throws Exception {
         UUID id = UUID.randomUUID();
         cassandra.update(new Example(1, id), QueryBuilder.set("\"user_Name\"", "Peter"), QueryBuilder.set("data", ByteBuffer.wrap(new byte[]{1, 2, 3})));
 
@@ -203,6 +200,95 @@ public class CassandraIT {
     public void test19_DeleteAll() throws Exception {
         cassandra.delete(Example.class, 1);
         assertEquals(0, cassandra.select(Example.class, 1).count());
+    }
+
+    @Test
+    public void test20_truncate() throws Exception {
+        cassandra.execute("truncate " + entityInfo.table());
+    }
+
+    @Test
+    public void test21_Insert_Async() throws Exception {
+        cassandra.insertAsync(example).get();
+
+        assertThat(cassandra.selectAsync(Example.class, 1).get(), contains(example));
+
+        assertEquals(1, entityPool.entityDataMap.size());
+    }
+
+    @Test
+    public void test22_Selects_Async() throws Exception {
+        cassandra.insertAsync(example1).get();
+
+        assertThat(cassandra.selectAsync(Example.class, 1).get(), containsInAnyOrder(example, example1));
+        assertThat(cassandra.selectAsync(Example.class, 1, userId).get(), contains(example));
+
+        assertEquals(example, cassandra.selectOneAsync(Example.class, 1, example.getUserId()).get().get());
+        assertEquals(example1, cassandra.selectOneAsync(Example.class, 1, example1.getUserId()).get().get());
+
+        assertFalse(cassandra.selectOneAsync(Example.class, 1, UUID.randomUUID()).get().isPresent());
+
+        Example newExample = new Example(2, UUID.randomUUID());
+        assertEquals(newExample, cassandra.selectOneAsync(newExample).get());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void test23_SelectTooManyKeys_Async() throws Exception {
+        cassandra.selectAsync(Example.class, 1, UUID.randomUUID(), 3).get();
+    }
+
+    @Test
+    public void test24_SelectNulls_Async() throws Exception {
+        UUID id = UUID.randomUUID();
+        cassandra.executeAsync(QueryBuilder.insertInto(entityInfo.table()).values(new String[]{"user_rank", "user_id"}, new Object[]{1, id})).get();
+        Example other = cassandra.selectOneAsync(Example.class, 1, id).get().get();
+        assertEquals(0, other.getNumber());
+        assertEquals(false, other.isEnable());
+    }
+
+    @Test
+    public void test25_InsertSomeFields_Async() throws Exception {
+        UUID id = UUID.randomUUID();
+        cassandra.insertAsync(new Example(1, id, "Mike", new byte[]{3, 2, 1}, 5, true, RetentionPolicy.CLASS), "\"user_Name\"", "data").get();
+
+        Example other = cassandra.selectOneAsync(Example.class, 1, id).get().get();
+        assertEquals("Mike", other.getUserName());
+        assertArrayEquals(new byte[]{3, 2, 1}, other.getData());
+        assertEquals(0, other.getNumber());
+        assertEquals(false, other.isEnable());
+    }
+
+    @Test
+    public void test26_Update_Async() throws Exception {
+        UUID id = UUID.randomUUID();
+        final Example updatedEntity = new Example(1, id, "Jon", new byte[]{1, 2, 3}, 5, true, RetentionPolicy.CLASS);
+        cassandra.updateAsync(updatedEntity).get();
+
+        assertEquals(updatedEntity, cassandra.selectOneAsync(Example.class, 1, id).get().get());
+    }
+
+    @Test
+    public void test27_UpdateSomeFields_Async() throws Exception {
+        UUID id = UUID.randomUUID();
+        cassandra.updateAsync(new Example(1, id), QueryBuilder.set("\"user_Name\"", "Peter"), QueryBuilder.set("data", ByteBuffer.wrap(new byte[]{1, 2, 3}))).get();
+
+        Example other = cassandra.selectOneAsync(Example.class, 1, id).get().get();
+        assertEquals("Peter", other.getUserName());
+        assertArrayEquals(new byte[]{1, 2, 3}, other.getData());
+        assertEquals(0, other.getNumber());
+        assertEquals(false, other.isEnable());
+    }
+
+    @Test
+    public void test28_DeleteOne_Async() throws Exception {
+        cassandra.deleteAsync(example).get();
+        assertEquals(5, cassandra.selectAsync(Example.class, 1).get().size());
+    }
+
+    @Test
+    public void test29_DeleteAll_Async() throws Exception {
+        cassandra.deleteAsync(Example.class, 1).get();
+        assertEquals(0, cassandra.selectAsync(Example.class, 1).get().size());
     }
 
     private <T> Iterable<T> iterable(Stream<T> stream) {
