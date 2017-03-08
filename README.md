@@ -11,7 +11,7 @@ You can use it as a maven dependency:
 <dependency>
     <groupId>org.jmmo</groupId>
     <artifactId>streaming-cassandra</artifactId>
-    <version>2.0</version>
+    <version>2.1</version>
 </dependency>
 ```
 
