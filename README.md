@@ -22,7 +22,3 @@ Or download the latest build at:
 
 See server project at:
     https://github.com/Megaprog/boot-ping-pong
-
-```java
-
-```
