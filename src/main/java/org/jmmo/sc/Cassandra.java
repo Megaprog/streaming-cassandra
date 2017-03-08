@@ -17,6 +17,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+@SuppressWarnings("unused")
 public class Cassandra {
     private final Session session;
     private final EntityPool entityPool;
@@ -58,10 +59,10 @@ public class Cassandra {
         return completableFuture(session.executeAsync(statement));
     }
 
-    public <T> CompletableFuture<List<T>> collectAsync(List<T> rows, ResultSet resultSet, Function<Row, T> rowMapper) {
-        IntStream.range(0, resultSet.getAvailableWithoutFetching()).forEach(i -> rows.add(rowMapper.apply(resultSet.one())));
-        return resultSet.isExhausted() ? CompletableFuture.completedFuture(rows) :
-                completableFuture(resultSet.fetchMoreResults()).thenCompose(rs -> collectAsync(rows, rs, rowMapper));
+    public <T> CompletableFuture<Consumer<T>> collectAsync(Consumer<T> rowConsumer, ResultSet resultSet, Function<Row, T> rowMapper) {
+        IntStream.range(0, resultSet.getAvailableWithoutFetching()).forEach(i -> rowConsumer.accept(rowMapper.apply(resultSet.one())));
+        return resultSet.isExhausted() ? CompletableFuture.completedFuture(rowConsumer) :
+                completableFuture(resultSet.fetchMoreResults()).thenCompose(rs -> collectAsync(rowConsumer, rs, rowMapper));
     }
 
     public <T> Stream<T> selectAll(Statement statement, Function<Row, T> rowMapper) {
@@ -69,7 +70,9 @@ public class Cassandra {
     }
 
     public <T> CompletableFuture<List<T>> selectAllAsync(Statement statement, Function<Row, T> rowMapper) {
-        return executeAsync(statement).thenCompose(rs -> collectAsync(new ArrayList<>(), rs, rowMapper));
+        @SuppressWarnings("MismatchedQueryAndUpdateOfCollection")
+        final List<T> result = new ArrayList<>();
+        return executeAsync(statement).thenCompose(rs -> collectAsync(result::add, rs, rowMapper)).thenApply(tConsumer -> result);
     }
 
     public <T> Stream<T> selectAll(Class<T> entityClass) {

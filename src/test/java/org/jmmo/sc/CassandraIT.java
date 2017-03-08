@@ -280,13 +280,18 @@ public class CassandraIT {
     }
 
     @Test
-    public void test28_DeleteOne_Async() throws Exception {
+    public void test28_SelectAll_Async() throws Exception {
+        assertThat(cassandra.selectAllAsync(Example.class).get(), hasSize(6));
+    }
+
+    @Test
+    public void test29_DeleteOne_Async() throws Exception {
         cassandra.deleteAsync(example).get();
         assertEquals(5, cassandra.selectAsync(Example.class, 1).get().size());
     }
 
     @Test
-    public void test29_DeleteAll_Async() throws Exception {
+    public void test30_DeleteAll_Async() throws Exception {
         cassandra.deleteAsync(Example.class, 1).get();
         assertEquals(0, cassandra.selectAsync(Example.class, 1).get().size());
     }
