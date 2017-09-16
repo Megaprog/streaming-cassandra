@@ -70,6 +70,10 @@ public class EntityInfo<T> implements CMapper<T> {
     }
 
     public Insert insertQuery(T entity, String... notKeyFields) {
+        if (notKeyFields.length == 0) {
+            return insertQuery(entity);
+        }
+
         final Insert insert = QueryBuilder.insertInto(table());
 
         final List<Object> keyValues = keyValues(entity);
@@ -77,29 +81,17 @@ public class EntityInfo<T> implements CMapper<T> {
             insert.value(columns()[i], keyValues.get(i));
         }
 
-        if (notKeyFields.length == 0) {
-            int columnIndex = 0;
-            for (CFieldMapper fieldMapper : fields.values()) {
-                if (columnIndex >= keys.size()) {
-                    insert.value(columns()[columnIndex], fieldValue(entity, fieldMapper));
-                }
-
-                columnIndex++;
+        for (String fieldName : notKeyFields) {
+            final String noQuotesName = Quotes.removeQuotes(fieldName);
+            final CFieldMapper fieldMapper = fields.get(noQuotesName);
+            if (fieldMapper == null) {
+                throw new IllegalArgumentException("There is wrong field name was specified");
             }
-        }
-        else {
-            for (String fieldName : notKeyFields) {
-                final String noQuotesName = Quotes.removeQuotes(fieldName);
-                final CFieldMapper fieldMapper = fields.get(noQuotesName);
-                if (fieldMapper == null) {
-                    throw new IllegalArgumentException("There is wrong field name was specified");
-                }
-                if (keys.values().contains(noQuotesName)) {
-                    continue;
-                }
-
-                insert.value(fieldName, fieldValue(entity, fieldMapper));
+            if (keys.values().contains(noQuotesName)) {
+                continue;
             }
+
+            insert.value(fieldName, fieldValue(entity, fieldMapper));
         }
 
         return insert;
