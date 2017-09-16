@@ -1,7 +1,9 @@
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/org.jmmo/streaming-cassandra/badge.png)](https://maven-badges.herokuapp.com/maven-central/org.jmmo/streaming-cassandra)
+
 Streaming Cassandra
 =============
 
-Very simple library for mapping POJO to Apache Cassandra tables.
+The Very simple library for mapping POJO to Apache Cassandra tables.
 
 ## How to get it?
 
@@ -11,7 +13,7 @@ You can use it as a maven dependency:
 <dependency>
     <groupId>org.jmmo</groupId>
     <artifactId>streaming-cassandra</artifactId>
-    <version>2.1</version>
+    <version>2.2</version>
 </dependency>
 ```
 
