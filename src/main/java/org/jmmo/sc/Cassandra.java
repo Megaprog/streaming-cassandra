@@ -315,27 +315,6 @@ public class Cassandra {
     }
 
     public static <T> CompletableFuture<T> completableFuture(ListenableFuture<T> listenableFuture) {
-        final CompletableFuture<T> completable = new CompletableFuture<T>() {
-            @Override
-            public boolean cancel(boolean mayInterruptIfRunning) {
-                boolean result = listenableFuture.cancel(mayInterruptIfRunning);
-                super.cancel(mayInterruptIfRunning);
-                return result;
-            }
-        };
-
-        Futures.addCallback(listenableFuture, new FutureCallback<T>() {
-            @Override
-            public void onSuccess(T result) {
-                completable.complete(result);
-            }
-
-            @Override
-            public void onFailure(Throwable t) {
-                completable.completeExceptionally(t);
-            }
-        });
-
-        return completable;
+        return new CompletableOverListenable<>(listenableFuture);
     }
 }
