@@ -12,6 +12,7 @@ import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
 
+import java.beans.Transient;
 import java.lang.annotation.RetentionPolicy;
 import java.nio.ByteBuffer;
 import java.util.*;
@@ -309,10 +310,14 @@ public class CassandraIT {
         private int user_rank;
         @Column("\"user_Name\"")
         protected String user_name;
+        @com.datastax.driver.mapping.annotations.Column(name = "numbeR", caseSensitive = false)
         public int number;
         public boolean enable;
 
         public RetentionPolicy retention_policy;
+
+        @com.datastax.driver.mapping.annotations.Transient
+        public int transientField;
 
         public Example() {
         }

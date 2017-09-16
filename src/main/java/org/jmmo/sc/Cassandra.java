@@ -13,6 +13,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -260,14 +261,25 @@ public class Cassandra {
         return QueryBuilder.insertInto(entityMapper.table()).values(entityMapper.columns(), entityMapper.values(entity));
     }
 
+    public <T> ResultSet insert(T entity) {
+        final Insert insert = insertQuery(entity);
+        return execute(insert);
+    }
+
     public <T> ResultSet insert(T entity, String... notKeyFields) {
         final Insert insert = insertQuery(entity, notKeyFields);
         return execute(insert);
     }
 
-    public <T> CompletableFuture<ResultSet> insertAsync(T entity, String... notKeyFields) {
-        final Insert insert = insertQuery(entity, notKeyFields);
-        return executeAsync(insert);
+    public <T> ResultSet insert(T entity, Predicate<String> fieldFilter) {
+        final Insert insert = insertQuery(entity, fieldFilter);
+        return execute(insert);
+    }
+
+    public <T> ResultSet insert(T entity, Consumer<Insert> insertConsumer) {
+        final Insert insert = insertQuery(entity);
+        insertConsumer.accept(insert);
+        return execute(insert);
     }
 
     public <T> ResultSet insert(T entity, Consumer<Insert> insertConsumer, String... notKeyFields) {
@@ -276,15 +288,58 @@ public class Cassandra {
         return execute(insert);
     }
 
+    public <T> ResultSet insert(T entity, Consumer<Insert> insertConsumer, Predicate<String> fieldFilter) {
+        final Insert insert = insertQuery(entity, fieldFilter);
+        insertConsumer.accept(insert);
+        return execute(insert);
+    }
+
+    public <T> CompletableFuture<ResultSet> insertAsync(T entity) {
+        final Insert insert = insertQuery(entity);
+        return executeAsync(insert);
+    }
+
+    public <T> CompletableFuture<ResultSet> insertAsync(T entity, String... notKeyFields) {
+        final Insert insert = insertQuery(entity, notKeyFields);
+        return executeAsync(insert);
+    }
+
+    public <T> CompletableFuture<ResultSet> insertAsync(T entity, Predicate<String> fieldFilter) {
+        final Insert insert = insertQuery(entity, fieldFilter);
+        return executeAsync(insert);
+    }
+
+    public <T> CompletableFuture<ResultSet> insertAsync(T entity, Consumer<Insert> insertConsumer) {
+        final Insert insert = insertQuery(entity);
+        insertConsumer.accept(insert);
+        return executeAsync(insert);
+    }
+
     public <T> CompletableFuture<ResultSet> insertAsync(T entity, Consumer<Insert> insertConsumer, String... notKeyFields) {
         final Insert insert = insertQuery(entity, notKeyFields);
         insertConsumer.accept(insert);
         return executeAsync(insert);
     }
 
+    public <T> CompletableFuture<ResultSet> insertAsync(T entity, Consumer<Insert> insertConsumer, Predicate<String> fieldFilter) {
+        final Insert insert = insertQuery(entity, fieldFilter);
+        insertConsumer.accept(insert);
+        return executeAsync(insert);
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> Insert insertQuery(T entity) {
+        return entityPool.entityInfo((Class<T>) entity.getClass()).insertQuery(entity);
+    }
+
     @SuppressWarnings("unchecked")
     public <T> Insert insertQuery(T entity, String... notKeyFields) {
         return entityPool.entityInfo((Class<T>) entity.getClass()).insertQuery(entity, notKeyFields);
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> Insert insertQuery(T entity, Predicate<String> fieldFilter) {
+        return entityPool.entityInfo((Class<T>) entity.getClass()).insertQuery(entity, fieldFilter);
     }
 
     public <T> ResultSet update(T entity, Assignment... assignments) {

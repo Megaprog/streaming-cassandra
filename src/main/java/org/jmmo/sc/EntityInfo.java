@@ -1,9 +1,6 @@
 package org.jmmo.sc;
 
-import com.datastax.driver.core.CodecRegistry;
-import com.datastax.driver.core.ColumnDefinitions;
-import com.datastax.driver.core.ProtocolVersion;
-import com.datastax.driver.core.Row;
+import com.datastax.driver.core.*;
 import com.datastax.driver.core.querybuilder.Assignment;
 import com.datastax.driver.core.querybuilder.Clause;
 import com.datastax.driver.core.querybuilder.Delete;
@@ -17,6 +14,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class EntityInfo<T> implements CMapper<T> {
@@ -71,27 +69,48 @@ public class EntityInfo<T> implements CMapper<T> {
 
     public Insert insertQuery(T entity, String... notKeyFields) {
         if (notKeyFields.length == 0) {
-            return insertQuery(entity);
+            throw new IllegalArgumentException("Should be specified at least one non-keyed field");
         }
 
+        final Insert insert = prepareInsert(entity);
+
+        for (String fieldName : notKeyFields) {
+            final String noQuotesName = ParseUtils.unDoubleQuote(fieldName);
+            final CFieldMapper fieldMapper = fields.get(noQuotesName);
+            if (fieldMapper == null) {
+                throw new IllegalArgumentException("There is wrong field name was specified: " + fieldName);
+            }
+            if (keys.values().contains(noQuotesName)) {
+                throw new IllegalArgumentException("Only non-keyed fields should be specified by " + fieldName + " is keyed");
+            }
+
+            insert.value(fieldName, fieldValue(entity, fieldMapper));
+        }
+
+        return insert;
+    }
+
+    public Insert insertQuery(T entity, Predicate<String> fieldFilter) {
+        final Insert insert = prepareInsert(entity);
+
+        for (int i = keys.size(); i < fields.size(); i++) {
+            final String fieldName = columns()[i];
+            final String noQuotesName = ParseUtils.unDoubleQuote(fieldName);
+
+            if (fieldFilter.test(noQuotesName)) {
+                insert.value(fieldName, fieldValue(entity, fields.get(noQuotesName)));
+            }
+        }
+
+        return insert;
+    }
+
+    private Insert prepareInsert(T entity) {
         final Insert insert = QueryBuilder.insertInto(table());
 
         final List<Object> keyValues = keyValues(entity);
         for (int i = 0; i < keyValues.size(); i++) {
             insert.value(columns()[i], keyValues.get(i));
-        }
-
-        for (String fieldName : notKeyFields) {
-            final String noQuotesName = Quotes.removeQuotes(fieldName);
-            final CFieldMapper fieldMapper = fields.get(noQuotesName);
-            if (fieldMapper == null) {
-                throw new IllegalArgumentException("There is wrong field name was specified");
-            }
-            if (keys.values().contains(noQuotesName)) {
-                continue;
-            }
-
-            insert.value(fieldName, fieldValue(entity, fieldMapper));
         }
 
         return insert;

@@ -1,9 +1,11 @@
 package org.jmmo.sc;
 
 import com.datastax.driver.core.DataType;
+import com.datastax.driver.core.ParseUtils;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.mapping.annotations.ClusteringColumn;
 import com.datastax.driver.mapping.annotations.PartitionKey;
+import com.datastax.driver.mapping.annotations.Transient;
 import org.jmmo.sc.annotation.Column;
 import org.jmmo.sc.annotation.Key;
 import org.jmmo.sc.annotation.Table;
@@ -99,7 +101,10 @@ public class EntityPool {
 
         for (Field field : allFields(entityClass)) {
             final int modifiers = field.getModifiers();
-            if (Modifier.isStatic(modifiers) || Modifier.isFinal(modifiers) || Modifier.isTransient(modifiers)) {
+            if (Modifier.isStatic(modifiers)
+                    || Modifier.isFinal(modifiers)
+                    || Modifier.isTransient(modifiers)
+                    || field.isAnnotationPresent(Transient.class)) {
                 continue;
             }
 
@@ -114,13 +119,15 @@ public class EntityPool {
                 column = columnAnnotation.value();
             }
             else if (xColumnAnnotation != null) {
-                column = xColumnAnnotation.name();
+                column = xColumnAnnotation.caseSensitive()
+                        ? ParseUtils.doubleQuote(xColumnAnnotation.name())
+                        : xColumnAnnotation.name().toLowerCase();
             }
             else {
                 column = field.getName().toLowerCase();
             }
 
-            final String noQuotesColumn = Quotes.removeQuotes(column);
+            final String noQuotesColumn = ParseUtils.unDoubleQuote(column);
             final CFieldMapper fieldMapper = new CFieldMapper(field.getType(),
                     MethodHandles.lookup().unreflectGetter(field), MethodHandles.lookup().unreflectSetter(field));
 
