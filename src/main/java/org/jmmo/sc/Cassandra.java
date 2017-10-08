@@ -60,9 +60,10 @@ public class Cassandra {
         return completableFuture(session.executeAsync(statement));
     }
 
-    public <T> CompletableFuture<Consumer<T>> collectAsync(Consumer<T> rowConsumer, ResultSet resultSet, Function<Row, T> rowMapper) {
-        IntStream.range(0, resultSet.getAvailableWithoutFetching()).forEach(i -> rowConsumer.accept(rowMapper.apply(resultSet.one())));
-        return resultSet.isExhausted() ? CompletableFuture.completedFuture(rowConsumer) :
+    public <T> CompletableFuture<Void> collectAsync(Consumer<T> rowConsumer, ResultSet resultSet, Function<Row, T> rowMapper) {
+        Stream.generate(resultSet::one).limit(resultSet.getAvailableWithoutFetching()).map(rowMapper).forEach(rowConsumer);
+
+        return resultSet.getExecutionInfo().getPagingState() == null ? CompletableFuture.completedFuture(null) :
                 completableFuture(resultSet.fetchMoreResults()).thenCompose(rs -> collectAsync(rowConsumer, rs, rowMapper));
     }
 
